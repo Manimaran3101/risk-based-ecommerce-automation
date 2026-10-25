@@ -1,0 +1,70 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Nightly run catches changes on the demo shop itself (prices, markup, outages).
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Which tag to run
+        type: choice
+        options: [all, '@smoke', '@regression']
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Microsoft's official image ships every browser and system library, pinned to
+    # the Playwright version. Keep the tag in sync with package.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    env:
+      CI: true
+      # Firefox refuses to start in the Actions container when HOME is not root's.
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - name: Run tests
+        run: |
+          if [ "${SUITE:-all}" = "all" ]; then
+            npx playwright test
+          else
+            npx playwright test --grep "$SUITE"
+          fi
+        env:
+          SUITE: ${{ inputs.suite }}
+
+      # Artifacts are uploaded even when tests fail: that is when they matter.
+      - name: Upload HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload traces and screenshots
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 14
