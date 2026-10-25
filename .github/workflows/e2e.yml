@@ -36,7 +36,7 @@ jobs:
       # Firefox refuses to start in the Actions container when HOME is not root's.
       HOME: /root
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - run: npm ci
 
@@ -55,7 +55,7 @@ jobs:
       # Artifacts are uploaded even when tests fail: that is when they matter.
       - name: Upload HTML report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: playwright-report/
@@ -63,7 +63,7 @@ jobs:
 
       - name: Upload traces and screenshots
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: test-results/
