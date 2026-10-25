@@ -1,16 +1,9 @@
 import { products } from '../../src/data/products';
 import { expect, test } from '../../src/fixtures';
 
-/**
- * [SIMULATED] Failure paths the public demo cannot produce on demand: we cannot
- * empty its stock or make its payment step decline. page.route() replaces only
- * the server's answer, using the exact response shape the shop really sends
- * (checked by tests/api/cart-rules.spec.ts and the shop's checkout script).
- *
- * What these tests prove: the shopper is told and no order is created.
- * What they do NOT prove: that the real server would send that answer. That is a
- * server/API-level check, and it is why they are labelled "simulated".
- */
+// [SIMULATED] I can't empty the demo's stock or make the payment fail, so page.route()
+// returns the error in the same format the shop uses. These tests check that the shopper
+// sees the error and no order is made. They don't prove the real server sends this answer.
 test.describe('Simulated failure paths', () => {
   test('[simulated] stock runs out between viewing and adding to cart', { tag: ['@regression'] }, async ({
     page,
@@ -42,8 +35,7 @@ test.describe('Simulated failure paths', () => {
     await shop.checkoutAsGuest(customer);
     await shop.pay({ method: 'Cash On Delivery (COD)' });
 
-    // The shop reports the error with window.alert(). Accept it inside the handler:
-    // an open alert blocks the page, so the click itself would never finish.
+    // The shop shows the error in an alert. Accept it in the handler, or the click never finishes.
     let alertText = '';
     page.once('dialog', async (dialog) => {
       alertText = dialog.message();
@@ -52,7 +44,7 @@ test.describe('Simulated failure paths', () => {
     await shop.checkout.confirmOrder();
     await expect.poll(() => alertText).toBe(declineMessage);
 
-    // Shopper stays on checkout with the order step still open, free to retry.
+    // Shopper stays on checkout and can try again.
     await expect(page).toHaveURL(/onepagecheckout/);
     await expect(shop.checkout.step('confirm-order')).toBeVisible();
   });

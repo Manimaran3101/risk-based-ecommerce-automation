@@ -26,11 +26,8 @@ test.describe('Pricing', () => {
     expect(await shop.cart.total('Sub-Total:')).toBe(book.price * 2 + laptop.price);
   });
 
-  // [SIMULATED] The price changes between the shopper loading the product page and
-  // adding it to the cart (a stale cached page, or a price update going live). We
-  // cannot change the shop's real price, so we rewrite the HTML the browser
-  // receives. What we assert is real server behaviour: the cart uses the server's
-  // current price, never the number the browser displayed.
+  // [SIMULATED] The price changes after the product page was loaded. I can't change the real
+  // price, so I change the HTML. The cart must still use the server price.
   test('[simulated] a stale product-page price never reaches the cart', { tag: ['@regression'] }, async ({
     page,
     shop,

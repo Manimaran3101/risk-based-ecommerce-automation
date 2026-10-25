@@ -4,18 +4,14 @@ import { StorefrontApi } from './api/storefront-api';
 import { buildCustomer, type Customer } from './data/customers';
 
 interface ShopFixtures {
-  /** Storefront endpoint sharing this test's browser cookies: seeds *this* session's cart. */
+  /** Add-to-cart endpoint with this test's cookies, fills this browser's cart. */
   storefront: StorefrontApi;
-  /** A unique guest for this test only. */
+  /** New guest for this test. */
   customer: Customer;
   shop: ShopActions;
 }
 
-/**
- * Isolation comes for free from Playwright: every test gets a brand-new browser
- * context, so a new guest cookie and therefore its own empty cart. Nothing is
- * shared between tests, which is why they can run in parallel and in any order.
- */
+// Every test gets a new browser context, so a new guest and an empty cart. Tests can run in parallel.
 export const test = base.extend<ShopFixtures>({
   storefront: async ({ page }, use) => {
     await use(new StorefrontApi(page.request));

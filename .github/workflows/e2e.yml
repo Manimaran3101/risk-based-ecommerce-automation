@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    # Nightly run catches changes on the demo shop itself (prices, markup, outages).
+    # Every night, to see changes on the demo shop (prices, HTML, downtime).
     - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
@@ -26,14 +26,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Microsoft's official image ships every browser and system library, pinned to
-    # the Playwright version. Keep the tag in sync with package.json.
+    # Playwright image with the browsers installed. Keep the version the same as package.json.
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
       options: --ipc=host
     env:
       CI: true
-      # Firefox refuses to start in the Actions container when HOME is not root's.
+      # Firefox does not start in the container if HOME is not /root.
       HOME: /root
     steps:
       - uses: actions/checkout@v7
@@ -52,7 +51,6 @@ jobs:
         env:
           SUITE: ${{ inputs.suite }}
 
-      # Artifacts are uploaded even when tests fail: that is when they matter.
       - name: Upload HTML report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7

@@ -1,6 +1,6 @@
-# Worked example: diagnosing a failure with a trace and a screenshot
+# Example: finding the cause of a failure with a trace and a screenshot
 
-A real failure from building this suite, and how the artifacts led to the fix.
+A real failure I had while building this suite, and how I found the fix.
 
 ## Symptom
 
@@ -11,25 +11,23 @@ WebKit) with only:
 Test timeout of 60000ms exceeded.
 ```
 
-It passed when re-run on its own. Firefox had a similar one-off failure in the same
-parallel run. Tempting conclusion: "flaky, add a retry". That would have hidden the
-real cause.
+It passed when I ran it again alone. Firefox had a similar failure once in the same
+run. My first idea was "flaky, add a retry", but that would hide the real cause.
 
 ## Step 1: the screenshot
 
-`screenshot: 'only-on-failure'` attached the page as it was when the test was
-killed:
+`screenshot: 'only-on-failure'` saved the page at the moment the test was
+stopped:
 
 ![Failure screenshot: order confirmation page](images/mobile-timeout-failure.png)
 
 The page shows **"Your order has been successfully processed! Order number:
-2404903"**. So the shop worked and the test steps worked. Whatever failed, it was
-not the checkout.
+2404903"**. So the shop and the test steps worked. The problem was not the checkout.
 
 ## Step 2: the trace
 
-`trace: 'retain-on-failure'` (local) kept `trace.zip`. Opening it with
-`npx playwright show-trace <path>` (or reading the step durations) showed:
+`trace: 'retain-on-failure'` (local) kept `trace.zip`. I opened it with
+`npx playwright show-trace <path>` and looked at the step times:
 
 | Step | Duration |
 | --- | --- |
@@ -39,34 +37,33 @@ not the checkout.
 | ↳ navigate to cart / check terms / click Checkout / click "Checkout as Guest" | 5.8 s / 5.2 s / 6.6 s / 9.4 s |
 | confirmation + cart emptied | 2.1 s |
 
-Every action succeeded; individual clicks simply took 5–9 seconds. The test did
-everything right but ran past its 60 s budget, while two browsers ran in parallel
-on a 7.6 GB laptop against a public demo server.
+Every action worked, but some clicks took 5–9 seconds. The test was correct but
+needed more than 60 s, because two browsers ran in parallel on my 7.6 GB laptop
+against a public demo server.
 
-## Step 3: decide the fix
+## Step 3: choose the fix
 
-| Option | Verdict |
+| Option | Result |
 | --- | --- |
-| Add retries | ✗ Hides the slowness, and costs another full purchase on a shared demo |
-| Raise the global timeout | ✗ Slows down detection of real hangs in every other test |
-| Add `waitForTimeout` | ✗ Makes every run slower and still guesses |
-| **Raise the budget for this one long journey** | ✓ A full purchase is ~25 round-trips; `test.setTimeout(120_000)` on that test only, with a comment pointing here |
+| Add retries | No: hides the slow test, and makes another full order on a shared demo |
+| Raise the global timeout | No: then a real hang in any other test takes longer to fail |
+| Add `waitForTimeout` | No: makes every run slower and is still a guess |
+| **More time for this one long test** | Yes: a full order is about 25 requests. `test.setTimeout(120_000)` only on this test, with a comment that links here |
 
-After the change, the smoke set passed on all three browsers.
+After this change the smoke test passed on all three browsers.
 
-## What made this quick
+## What helped
 
-- `screenshot: 'only-on-failure'` → instant answer to "did the app break?"
-- `trace` → per-step timing instead of guessing
-- `test.step()` names in the test → the trace reads like the risk ("check out as
-  guest, pay on delivery"), not like a list of clicks
-- In CI the same artifacts are uploaded (`playwright-report/`, `test-results/`),
-  with `trace: 'on-first-retry'` so the recorded trace is exactly the attempt that
-  failed.
+- The failure screenshot showed right away that the app did not break.
+- The trace showed the time of each step, so I did not have to guess.
+- The `test.step()` names made the trace easy to read ("check out as guest, pay on
+  delivery").
+- CI uploads the same files (`playwright-report/`, `test-results/`). There I use
+  `trace: 'on-first-retry'`, so the trace is from the attempt that failed.
 
-## The other artifact type: evidence on success
+## Screenshot when the test passes
 
 `critical-path.spec.ts` also attaches a screenshot of the confirmation page with
-`testInfo.attach('order-<number>-confirmation', …)` **when it passes**. In the HTML
-report each run then shows which order number it created: useful when someone asks
-"which test order is this?" on a shared environment.
+`testInfo.attach('order-<number>-confirmation', …)` **when it passes**. So the report
+shows which order number each run created. This helps when someone asks "which test
+order is this?" on a shared environment.

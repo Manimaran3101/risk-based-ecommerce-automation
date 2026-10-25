@@ -55,10 +55,7 @@ test.describe('Checkout validation', () => {
     shop,
     customer,
   }) => {
-    // Known defect, found while building this suite: the shop accepts an expiry
-    // date in the past. test.fail() keeps the test honest - it asserts the correct
-    // behaviour, is reported as "expected to fail", and turns red the day the shop
-    // fixes it, so the annotation cannot go stale silently.
+    // The test checks the correct behaviour, so it fails until the shop fixes F-1.
     test.fail(true, 'Known defect: expired card accepted at payment-info step (docs/risk-matrix.md, finding F-1)');
 
     const lastMonth = new Date();
@@ -85,8 +82,7 @@ test.describe('Checkout validation', () => {
   }) => {
     await shop.checkoutAsGuest(customer);
 
-    // Real behaviour, no mocking: dropping the cookies is what a session timeout
-    // looks like to the server - it no longer knows this guest or their cart.
+    // No mocking: deleting the cookies is like a session timeout for the server.
     await context.clearCookies();
     let alertText = '';
     page.once('dialog', async (dialog) => {
@@ -96,7 +92,7 @@ test.describe('Checkout validation', () => {
     await shop.checkout.choosePaymentMethod('Cash On Delivery (COD)');
     await shop.checkout.continueFrom('payment-method');
 
-    // The server no longer finds a cart for this visitor and refuses the step.
+    // The server has no cart for this visitor anymore, so it stops the step.
     await expect.poll(() => alertText).toBe('Your cart is empty');
     await expect(shop.checkout.step('payment-info')).toBeHidden();
     await shop.cart.open();

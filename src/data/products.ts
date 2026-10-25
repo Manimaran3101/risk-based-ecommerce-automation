@@ -1,11 +1,5 @@
-/**
- * The few catalogue items the suite relies on. Chosen because they are simple
- * products (no size/colour attributes), always in stock, and cheap to reason about.
- *
- * `price` is the expected catalogue price. If the shop changes it, the
- * catalogue-contract smoke test fails first and tells you so in one place,
- * instead of every pricing test failing with a confusing total.
- */
+// Products used in the tests: simple (no size/colour), always in stock.
+// If the shop changes a price, the price smoke test in tests/api fails first.
 export interface Product {
   id: number;
   slug: string;
@@ -18,8 +12,8 @@ export const products = {
   laptop: { id: 31, slug: '141-inch-laptop', name: '14.1-inch Laptop', price: 1590 },
 } satisfies Record<string, Product>;
 
-/** Fee the shop adds when "Cash On Delivery" is the payment method. */
+/** Extra fee for "Cash On Delivery". */
 export const CASH_ON_DELIVERY_FEE = 7;
 
-/** The shop's server-side quantity limit per cart line. */
+/** Max quantity per cart line (server rule). */
 export const MAX_QUANTITY_PER_LINE = 10_000;

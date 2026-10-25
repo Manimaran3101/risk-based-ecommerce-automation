@@ -6,15 +6,8 @@ export interface AddToCartResult {
   messages: string[];
 }
 
-/**
- * Thin client for the storefront's own AJAX endpoint (the one the "Add to cart"
- * button calls). The shop has no public REST API, so this is the only server
- * entry point we use for test setup.
- *
- * When built from `page.request`, it shares the page's cookies, so items added
- * here land in that browser session's cart: setup in milliseconds, then the UI
- * test starts where the risk actually is.
- */
+// Calls the add-to-cart endpoint that the "Add to cart" button uses (the shop has no REST API).
+// With page.request it has the same cookies as the page, so the items go into that browser's cart.
 export class StorefrontApi {
   constructor(private readonly request: APIRequestContext) {}
 
@@ -30,7 +23,7 @@ export class StorefrontApi {
     return { success: body.success === true, messages };
   }
 
-  /** Setup helper: fail loudly if seeding did not work, so the test never runs on a wrong cart. */
+  /** Fills the cart for a test. Throws if it did not work. */
   async seedCart(...lines: Array<{ product: Product; quantity?: number }>): Promise<void> {
     for (const { product, quantity = 1 } of lines) {
       const result = await this.addToCart(product, quantity);

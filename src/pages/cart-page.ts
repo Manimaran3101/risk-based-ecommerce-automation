@@ -1,10 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { parseMoney } from '../money';
 
-/**
- * The cart is where price, quantity and discount risks meet, and several tests
- * read the same rows and totals, so it earns a page object.
- */
+// Cart page object. Many tests use the same rows and totals.
 export class CartPage {
   readonly emptyMessage: Locator;
   readonly couponMessage: Locator;
@@ -20,7 +17,7 @@ export class CartPage {
     await this.page.goto('/cart');
   }
 
-  /** A cart line, found by the product link it contains (what a shopper reads). */
+  /** A cart line, found by its product link. */
   line(productName: string): Locator {
     return this.page
       .locator('tr.cart-item-row')
@@ -54,13 +51,13 @@ export class CartPage {
   }
 
   async applyCoupon(code: string): Promise<void> {
-    // The coupon field has no <label>; its name attribute is the form contract.
+    // The coupon field has no <label>, so I use its name attribute.
     await this.page.locator('input[name="discountcouponcode"]').fill(code);
     await this.page.getByRole('button', { name: 'Apply coupon' }).click();
   }
 
   async acceptTermsOfService(): Promise<void> {
-    // The checkbox has no <label> element either, so its id is the most stable handle.
+    // No <label> here either, so I use the id.
     await this.page.locator('#termsofservice').check();
   }
 

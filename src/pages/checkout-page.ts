@@ -6,20 +6,16 @@ type Step = 'billing' | 'shipping' | 'shipping-method' | 'payment-method' | 'pay
 
 export type PaymentMethod = 'Cash On Delivery (COD)' | 'Check / Money Order' | 'Credit Card';
 
-// The shipping and payment radio buttons have no <label> (an accessibility gap,
-// see docs/risk-matrix.md F-2), so we select them by value: the system names the
-// server expects. Those are a data contract and far more stable than position.
+// The shipping and payment radios have no <label> (F-2 in docs/risk-matrix.md),
+// so I select them by value (the names the server expects).
 const paymentSystemNames: Record<PaymentMethod, string> = {
   'Cash On Delivery (COD)': 'Payments.CashOnDelivery',
   'Check / Money Order': 'Payments.CheckMoneyOrder',
   'Credit Card': 'Payments.Manual',
 };
 
-/**
- * The one-page checkout: six accordion steps on one URL, each with its own
- * "Continue" button. Every locator is scoped to its step, because "Continue",
- * "First name:" etc. appear more than once on the page.
- */
+// Checkout with six steps on one page, each with its own "Continue" button.
+// Locators are inside their step, because "Continue", "First name:" etc. are on the page more than once.
 export class CheckoutPage {
   constructor(private readonly page: Page) {}
 
@@ -44,7 +40,7 @@ export class CheckoutPage {
     await billing.getByLabel('Phone number:').fill(customer.phone);
   }
 
-  /** Clicks the step's Continue and waits for the next step to open. */
+  /** Clicks Continue in the step and waits for the next step. */
   async continueFrom(step: Step, next?: Step): Promise<void> {
     await this.step(step).getByRole('button', { name: 'Continue' }).click();
     if (next) await expect(this.step(next)).toBeVisible();
@@ -63,7 +59,7 @@ export class CheckoutPage {
     await info.getByLabel('Cardholder name').fill(card.holder);
     await info.getByLabel('Card number').fill(card.number);
     await info.getByLabel('Expiration date').selectOption(card.month);
-    await info.locator('#ExpireYear').selectOption(card.year); // shares the month's label
+    await info.locator('#ExpireYear').selectOption(card.year); // same label as the month
     await info.getByLabel('Card code').fill(card.cvv);
   }
 

@@ -1,21 +1,15 @@
 import { CASH_ON_DELIVERY_FEE, products } from '../../src/data/products';
 import { expect, test } from '../../src/fixtures';
 
-/**
- * The money path, end to end through the real UI: product selection -> price ->
- * guest checkout -> order confirmation. This is the one journey that runs on
- * every browser in the matrix.
- */
+// The purchase end to end in the UI: select product, price, guest checkout, confirmation.
+// This is the only test that runs on every browser.
 test.describe('Critical path: guest purchase', () => {
   test('guest buys a product and gets an order number for the right total', { tag: ['@smoke'] }, async ({
     page,
     shop,
     customer,
   }, testInfo) => {
-    // A full purchase is ~25 round-trips to a public demo. On mobile WebKit it
-    // once completed correctly but took longer than the 60 s default (see
-    // docs/diagnostics.md). The budget is raised for this one journey only,
-    // instead of globally, and no retry is used to hide it.
+    // Long test (about 25 requests), it was too slow for 60 s on mobile WebKit. See docs/diagnostics.md.
     test.setTimeout(120_000);
     const book = products.book;
 
@@ -34,10 +28,9 @@ test.describe('Critical path: guest purchase', () => {
 
     await test.step('confirmation is final and consistent', async () => {
       expect(order.orderNumber).toMatch(/^\d+$/);
-      // The confirm step showed subtotal + the COD fee the shop adds.
+      // Confirm step total = price + COD fee.
       expect(order.confirmedTotal).toBe(book.price + CASH_ON_DELIVERY_FEE);
-      // Diagnostics example: keep visual evidence of the confirmation in the
-      // report even when the test passes (screenshots on failure are automatic).
+      // Screenshot of the confirmation in the report, also when the test passes.
       await testInfo.attach(`order-${order.orderNumber}-confirmation`, {
         body: await page.screenshot(),
         contentType: 'image/png',

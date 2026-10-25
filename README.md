@@ -1,33 +1,35 @@
 # Risk-Based E-Commerce Automation
 
-A deliberately small Playwright + TypeScript suite for an online shop. The goal is
-not to automate every page. It is to put test effort where a failure costs money
-or orders, show why, and leave the rest alone on purpose.
+A small Playwright + TypeScript test suite for an online shop. I did not try to automate
+every page. I tested the parts where a bug costs money or orders, and I explain below why
+I left the rest out.
 
 - **App under test:** [Tricentis Demo Web Shop](https://demowebshop.tricentis.com), a public nopCommerce demo
-- **Stack:** Playwright 1.64, TypeScript (strict), GitHub Actions in the official Playwright container
-- **Size:** 4 API tests + 15 UI tests, ~1 minute on Chromium locally
+- **Stack:** Playwright 1.64, TypeScript (strict), GitHub Actions in the Playwright Docker image
+- **Size:** 4 API tests + 15 UI tests
 
-## Choosing the target honestly
+I built this with help from an AI assistant. I made the design choices, ran and debugged the
+tests, and can explain all of it.
 
-The brief named `hoteller-theta.vercel.app`. Exploring it (headless) showed it
-is a server-rendered copy of an AI hotel-*search* site with all JavaScript
-removed: no cart, checkout, coupons, prices in results or API. Only a GET search
-form works. None of the requested commerce risks exist there, and mocking a whole
-shop around static HTML would only test code we wrote ourselves. A second
-candidate, `automationintesting.online`, had its room-detail API returning
-HTTP 500 at the time. The Tricentis shop has every risk in the brief for real.
+## Why this shop
+
+The brief named `hoteller-theta.vercel.app`. When I explored it (headless), I saw that it is
+a server-rendered copy of a hotel *search* site with all JavaScript removed. There is no cart,
+no checkout, no coupons, no prices in the results and no API. Only a GET search form works.
+None of the risks from the brief exist there, and if I mocked a whole shop around static HTML,
+I would only test my own code. My second choice, `automationintesting.online`, had its room
+API returning HTTP 500 at that time. The Tricentis shop has all the risks from the brief.
 
 ## The risks and where they are tested
 
-Full scoring in **[docs/risk-matrix.md](docs/risk-matrix.md)**. Short version:
+The full scoring is in **[docs/risk-matrix.md](docs/risk-matrix.md)**. Short version:
 
 | Risk | Test (file) | Real or simulated |
 | --- | --- | --- |
 | Product selection → price → checkout → confirmation | `critical-path` › guest buys a product… `@smoke` | Real, 3 browsers |
-| Price shown = price charged; fees added | `critical-path`, `pricing` › quantity / multi-line | Real |
-| Price changes after the page was loaded | `pricing` › stale product-page price | **Simulated** page, real server assertion |
-| Cart persistence & isolation | `cart` › reload + second tab, other shopper, remove | Real |
+| Price shown = price charged, fees added | `critical-path`, `pricing` › quantity / several lines | Real |
+| Price changes after the page was loaded | `pricing` › stale product-page price | **Simulated** page, real server check |
+| Cart persistence and isolation | `cart` › reload + second tab, other shopper, remove | Real |
 | Invalid coupon | `coupon` › invalid coupon rejected, total unchanged | Real |
 | Checkout validation | `checkout-validation` › terms, required fields | Real |
 | Rejected payment | `checkout-validation` › card fails checksum | Real |
@@ -35,11 +37,11 @@ Full scoring in **[docs/risk-matrix.md](docs/risk-matrix.md)**. Short version:
 | Expired card | `checkout-validation` › expired card, **finding F-1** | Real, `test.fail()` |
 | Stock change | `simulated-failures` › stock runs out | **Simulated** |
 | Quantity / stock rules on the server | `api/cart-rules` › zero, boundary, unknown product | Real (HTTP) |
-| Expired session | `checkout-validation` › session expires mid-checkout | Real (cookies dropped) |
+| Expired session | `checkout-validation` › session expires mid-checkout | Real (cookies deleted) |
 
-"Simulated" tests use `page.route()` to replace one server answer with the exact
-response shape the shop really sends. Their names start with `[simulated]`, so
-nobody mistakes them for proof that the server behaves that way.
+The "simulated" tests use `page.route()` to replace one server answer with the same response
+shape the shop really sends. Their names start with `[simulated]`, so it is clear that they
+don't prove the server really behaves like that.
 
 ## Run it
 
@@ -63,150 +65,142 @@ npm run test:smoke
 npm run test:regression
 ```
 
-The HTML report is written to `playwright-report/`; open it with
-`npx playwright show-report` when you want to browse it.
+The HTML report is in `playwright-report/`. Open it with `npx playwright show-report`.
 
-## Project layout
+## Folders
 
 ```
 src/
-  api/storefront-api.ts    add-to-cart endpoint client, used for fast cart setup
-  actions/shop-actions.ts  domain actions: selectProduct, applyCoupon, checkoutAsGuest, pay, placeOrder
-  pages/cart-page.ts       page object, only for the two pages several tests share
+  api/storefront-api.ts    client for the add-to-cart endpoint, for fast cart setup
+  actions/shop-actions.ts  shopper actions: selectProduct, applyCoupon, checkoutAsGuest, pay, placeOrder
+  pages/cart-page.ts       page object (only for the 2 pages that many tests use)
   pages/checkout-page.ts
-  data/products.ts         the 2 catalogue items the suite relies on + shop constants
-  data/customers.ts        unique fake guest per test, test card numbers
+  data/products.ts         the 2 products the tests use + shop constants
+  data/customers.ts        new fake guest per test, test card numbers
   fixtures.ts              storefront, customer, shop fixtures
 tests/
   api/                     server rules, no browser
   e2e/                     UI tests
 docs/
-  risk-matrix.md           likelihood × impact → test depth, findings
-  diagnostics.md           worked example: trace + screenshot → root cause → fix
+  risk-matrix.md           likelihood × impact → how much to test, findings
+  diagnostics.md           example: trace + screenshot → cause → fix
 ```
 
-### Why it is this small
+### Why it is so small
 
-- **Two page objects, not ten.** Only the cart and checkout are used by several
-  tests. A product page used in one action does not need a class.
-- **Domain actions** (`shop.placeGuestOrder(customer, { method: 'Cash On Delivery (COD)' })`)
-  keep tests readable as business steps. Page objects hold locators; actions hold
-  the order of steps.
-- **No custom reporter, logger, config layer or base classes.** Playwright already
-  provides fixtures, steps, traces and reports.
+- **Two page objects, not ten.** Only the cart and checkout are used by many tests. A product
+  page that is used in one action doesn't need its own class.
+- **Shopper actions** like `shop.placeGuestOrder(customer, { method: 'Cash On Delivery (COD)' })`
+  make the tests read like the steps a shopper does. Page objects have the locators, the
+  actions have the order of the steps.
+- **No custom reporter, logger, config layer or base classes.** Playwright already has
+  fixtures, steps, traces and reports.
 
-## Engineering evidence
+## How it is built
 
-### Fixtures and isolated data
+### Fixtures and test data
 
-Every test gets a new browser context → a new guest cookie → its **own empty cart**.
-The `customer` fixture creates a unique, obviously fake guest
-(`qa.<random>@example.com`). Nothing is shared, so tests run in parallel and in
-any order. The `storefront` fixture uses `page.request`, which shares the page's
-cookies: one HTTP call fills the cart of *this* browser session, so UI tests start
-at the step they are testing instead of clicking through the catalogue every time.
-The critical path is the exception: it selects the product through the UI on
-purpose, because that is part of the risk.
+Every test gets a new browser context, so a new guest cookie and its **own empty cart**. The
+`customer` fixture makes a new fake guest (`qa.<random>@example.com`). Nothing is shared, so
+the tests can run in parallel and in any order. The `storefront` fixture uses `page.request`,
+which has the same cookies as the page. So one HTTP call fills the cart of *this* browser, and
+the UI test can start at the step it tests, without clicking through the shop every time.
+Only the critical path selects the product in the UI, because product selection is part of
+what it tests.
 
-### Stable locators
+### Locators
 
-In order of preference, given what this shop's markup offers (it has no
-`data-testid`s):
+The shop has no `data-testid`s, so I use this order:
 
-1. **Role + accessible name** (`getByRole('button', { name: 'Apply coupon' })`):
-   what the user sees.
-2. **Label** (`getByLabel('First name:')`), always **scoped to its checkout step**,
-   because the billing and shipping forms use the same labels.
-3. **Form contract attributes** where there is no label: the coupon input's `name`,
-   the payment radios' `value` (`Payments.CashOnDelivery`). These are what the
-   server reads, so they change far less often than CSS classes.
-4. Never: positional selectors (`nth(2)`), layout classes, XPath.
+1. **Role + accessible name** (`getByRole('button', { name: 'Apply coupon' })`), what the user sees.
+2. **Label** (`getByLabel('First name:')`), always **inside its checkout step**, because the
+   billing and shipping forms have the same labels.
+3. **Form attributes** when there is no label: the coupon input's `name`, the payment radio
+   `value` (`Payments.CashOnDelivery`). The server reads these, so they change less often
+   than CSS classes.
+4. Never: position (`nth(2)`), layout classes, XPath.
 
-A real example: the first run failed with *strict mode violation: "Add to cart"
-resolved to 6 elements*, because product pages also show "customers also bought"
-boxes. The fix was scoping to `.product-essential`, not `.first()`, which would
-have silently clicked the wrong product if the layout changed.
+Example: on my first run I got *strict mode violation: "Add to cart" resolved to 6 elements*,
+because product pages also show "customers also bought" boxes. I fixed it by scoping to
+`.product-essential`. I did not use `.first()`, because that could click the wrong product if
+the layout changes.
 
-### Retries policy
+### Retries
 
 Set in `playwright.config.ts`:
 
 | | Retries | Trace | Why |
 | --- | --- | --- | --- |
-| Local | 0 | `retain-on-failure` | A local failure should be looked at, not hidden |
-| CI | 2 | `on-first-retry` | Public demo over the internet: a one-off network blip is possible. A pass on retry is still reported as **flaky** in the HTML report, so it stays visible |
+| Local | 0 | `retain-on-failure` | I want to look at a local failure, not hide it |
+| CI | 2 | `on-first-retry` | It is a public demo over the internet, so a network problem can happen. A test that passes on retry is still shown as **flaky** in the report |
 
-Retries are not a fix for slowness or bad waits (see
-[docs/diagnostics.md](docs/diagnostics.md): the one slow test got a larger time
-budget, not a retry). Workers are capped at 2: the shop is shared by everyone who
-practises on it.
+Retries don't fix slow tests or bad waits. In [docs/diagnostics.md](docs/diagnostics.md) the
+one slow test got a longer timeout, not a retry. Workers are 2, because many people use this
+demo shop.
 
 ### CI artifacts
 
-`.github/workflows/e2e.yml` runs in `mcr.microsoft.com/playwright` (browsers
-preinstalled, version-pinned) on push, pull request, nightly and on demand
-(choose `all`, `@smoke` or `@regression`). It always uploads the **HTML report**
-and, on failure, **`test-results/`** with traces and screenshots.
+`.github/workflows/e2e.yml` runs in the `mcr.microsoft.com/playwright` image (browsers already
+installed) on push, pull request, every night and by hand (choose `all`, `@smoke` or
+`@regression`). It always uploads the **HTML report**, and when tests fail also
+**`test-results/`** with traces and screenshots.
 
 ### Tags
 
-- `@smoke`: the risk-9 journey (on every browser) + the catalogue price contract.
-  Answers "can a customer buy something at the right price right now?"
+- `@smoke`: the risk-9 purchase (on every browser) + the product price check.
+  It answers "can a customer buy something at the right price right now?"
 - `@regression`: everything else in the risk matrix.
 
-### Browser coverage
+### Browsers
 
 | Project | Runs | Why |
 | --- | --- | --- |
-| `api` | API tests | Server rules need no browser |
-| `chromium` (desktop) | everything | Most customers; the full regression set runs once |
-| `firefox` (desktop) | `@smoke` | Second engine for the money path: catches form/AJAX handling differences |
-| `mobile-safari` (iPhone 14, WebKit) | `@smoke` | Mobile Safari is a large share of shoppers and a different engine + viewport |
+| `api` | API tests | Server rules don't need a browser |
+| `chromium` (desktop) | everything | Most customers, the full suite runs once here |
+| `firefox` (desktop) | `@smoke` | Second engine for the purchase: forms and AJAX can work differently |
+| `mobile-safari` (iPhone 14, WebKit) | `@smoke` | Many shoppers use Safari on a phone, and it is a different engine and screen size |
 
-Not running the whole suite on every browser is deliberate: totals, coupons and
-quantity limits are calculated **on the server**. Running those three times
-proves the same thing three times. Browser differences show up in the UI
-journey, so that is what gets multiplied.
+I only run the smoke test on Firefox and mobile Safari. Totals, coupons and quantity limits
+are calculated **on the server**, so running them in 3 browsers tests the same thing 3 times.
+Browser differences show up in the UI flow, so that is the test I run everywhere.
 
-## Why we don't test third-party payment internals
+## Why I don't test the payment provider
 
-This shop's card option is an in-app form (nopCommerce "Manual" processing): no
-payment provider is involved, and we only use the industry test number
-`4111 1111 1111 1111`. In a real shop the card form would be a provider's iframe
-(Stripe, Adyen…), and the suite would still stop at the same boundary:
+The card option in this shop is a form inside the shop (nopCommerce "Manual" processing).
+There is no payment provider, and I only use the standard test number `4111 1111 1111 1111`.
+In a real shop the card form would be an iframe from a provider like Stripe or Adyen, and I
+would stop at the same point.
 
-- **We own:** sending the right amount and currency, showing the provider's
-  answer correctly (success, decline, error, timeout), never creating an order
-  for a failed payment, and not losing the cart when payment fails.
-  `simulated-failures` › payment declined tests exactly this.
-- **The provider owns:** fraud checks, 3-D Secure, card network routing,
-  authorisation and settlement. A sandbox iframe accepting `4242…` proves the
-  sandbox is up, not that the payment network works. Driving the provider's
-  iframe in UI tests also makes the suite slow and flaky because of someone else's
-  UI changes, and it can breach the provider's terms.
-- **How the boundary is covered properly:** contract tests against the provider's
-  sandbox API at the integration layer (request shape, webhooks, idempotency),
-  plus production monitoring of payment success rates.
+My part is: send the right amount and currency, show the provider's answer correctly
+(success, decline, error, timeout), never create an order when the payment failed, and keep
+the cart when the payment fails. The `simulated-failures` › payment declined test checks this.
 
-## Which checks belong at API or component level
+The provider's part is fraud checks, 3-D Secure, card network and settlement. If a sandbox
+iframe accepts `4242…`, it only shows that the sandbox works. Clicking through the provider's
+iframe in UI tests also makes them slow and flaky when the provider changes their UI, and it
+can be against their terms. This is better covered by contract tests against the provider's
+sandbox API (request shape, webhooks, idempotency) and by monitoring payment success in
+production.
 
-| Check | Better layer | Why not E2E |
+## Which checks are better at API or unit level
+
+| Check | Better level | Why not E2E |
 | --- | --- | --- |
-| Quantity rules (0, max 10 000, unknown product) | **API**, already done in `tests/api` | Pure server rule; HTTP call in ms, no rendering involved |
-| Catalogue price contract | **API**, already done | One request per product instead of a browser |
-| Discount maths (%, fixed, caps, stacking, expiry, once per customer) | **Unit / service** | Dozens of combinations; each would be a full checkout in E2E. E2E keeps one "invalid code is rejected" check |
-| Tax and shipping calculation per country | **Unit / service** | Table-driven tests over many inputs |
-| Card number checksum, expiry rules | **Unit / component** (validator) | Pure function. E2E keeps one rejection per rule to prove it is wired to the UI. F-1 shows the expiry rule is missing |
-| Address form field validation messages | **Component** | Rendering one form; E2E keeps one "all required fields" check |
-| Out-of-stock race, payment decline | **API / integration** with a controllable backend | The public demo cannot be put into those states. E2E covers the UI reaction (simulated) |
-| Cart merge on login, order history | **API + one E2E** | Needs accounts; deliberately out of scope on a shared demo |
+| Quantity rules (0, max 10 000, unknown product) | **API**, done in `tests/api` | Server rule, an HTTP call takes milliseconds |
+| Product price check | **API**, done | One request per product instead of a browser |
+| Discount maths (%, fixed, caps, stacking, expiry, once per customer) | **Unit / service** | Many combinations, each would be a full checkout in E2E. E2E keeps one "invalid code" check |
+| Tax and shipping per country | **Unit / service** | Table tests with many inputs |
+| Card number checksum, expiry rules | **Unit / component** (validator) | Simple function. E2E keeps one rejection per rule to show it is connected to the UI. F-1 shows the expiry rule is missing |
+| Address form error messages | **Component** | Only one form. E2E keeps one "all required fields" check |
+| Out-of-stock race, payment decline | **API / integration** with a backend I can control | I can't put the public demo in those states. E2E checks the UI reaction (simulated) |
+| Cart merge on login, order history | **API + one E2E** | Needs accounts, out of scope on a shared demo |
 
-Rule of thumb: E2E proves the pieces are **wired together** on the money path;
-the lower layers prove the **rules** exhaustively.
+In short: E2E checks that the parts work together on the purchase path. The detailed rules
+are better tested at API or unit level.
 
 ## Known findings
 
-- **F-1** Expired card accepted at the payment step. Tracked with `test.fail()`.
-- **F-2** Shipping/payment radios and the terms checkbox have no labels (accessibility).
+- **F-1** An expired card is accepted at the payment step. Tracked with `test.fail()`.
+- **F-2** The shipping/payment radio buttons and the terms checkbox have no labels (accessibility).
 
 Details in [docs/risk-matrix.md](docs/risk-matrix.md#findings-from-building-the-suite).

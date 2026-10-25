@@ -2,13 +2,8 @@ import { expect, test } from '@playwright/test';
 import { StorefrontApi } from '../../src/api/storefront-api';
 import { MAX_QUANTITY_PER_LINE, products } from '../../src/data/products';
 
-/**
- * Server-side rules checked at the HTTP level: no browser, a fraction of a
- * second each. A browser adds nothing to "does the server reject quantity 0",
- * so these rules are tested here and not in the UI suite.
- *
- * Each test gets its own `request` context, i.e. its own guest cookie and cart.
- */
+// Server rules tested with HTTP only, no browser needed.
+// Each test has its own request context, so its own guest cookie and cart.
 test.describe('Cart rules (storefront endpoint)', () => {
   test('catalogue prices match the test data', { tag: ['@smoke'] }, async ({ request }) => {
     for (const product of Object.values(products)) {

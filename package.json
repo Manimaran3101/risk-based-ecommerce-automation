@@ -2,7 +2,7 @@
   "name": "risk-based-ecommerce-automation",
   "version": "0.1.0",
   "private": true,
-  "description": "Risk-based, proportional Playwright + TypeScript suite for the Tricentis Demo Web Shop: deep coverage where money and orders are at stake, little or none elsewhere.",
+  "description": "Risk-based Playwright + TypeScript tests for the Tricentis Demo Web Shop.",
   "author": "Manimaran Murugan",
   "license": "MIT",
   "engines": {

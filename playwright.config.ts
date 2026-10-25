@@ -7,15 +7,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
 
-  // Retries policy (see README > "Retries policy"):
-  // - Local: 0. A failure on your machine should be looked at, not hidden.
-  // - CI: 2. The target is a shared public demo over the internet, so a one-off
-  //   network hiccup is possible. A test that passes only on retry is reported
-  //   as "flaky" in the HTML report, so retries never silently hide a problem.
+  // Local 0, CI 2 (public demo over the internet). See README, "Retries".
   retries: isCI ? 2 : 0,
 
-  // 2 workers everywhere: the shop is a public demo shared by many people, and
-  // the local machine has limited RAM. Faster runs are not worth hammering it.
+  // 2 workers: many people use this demo shop, and my laptop has little RAM.
   workers: 2,
 
   timeout: 60_000,
@@ -27,19 +22,14 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.BASE_URL ?? 'https://demowebshop.tricentis.com',
-    // CI: record a trace only when a test is retried, so the artifact shows
-    // exactly the failing attempt. Local runs have no retries, so keep the
-    // trace of any failure instead.
+    // CI: trace on the retry. Local has no retries, so keep the trace of a failure.
     trace: isCI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
 
-  // Deliberate browser matrix (see README > "Browser coverage"):
-  // the full suite runs once on Chromium; Firefox and mobile WebKit run only the
-  // @smoke critical path, because what differs between engines is rendering and
-  // input handling on the money path, not server-side pricing rules.
+  // Full suite on Chromium, only @smoke on Firefox and mobile Safari. See README, "Browsers".
   projects: [
     {
       name: 'api',

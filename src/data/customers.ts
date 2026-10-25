@@ -11,11 +11,7 @@ export interface Customer {
   phone: string;
 }
 
-/**
- * A fresh, obviously fake guest for every test. The unique email keeps orders
- * from different tests (and different people running this suite against the same
- * public demo) apart, and example.com can never deliver mail to a real person.
- */
+// New fake guest for each test. Unique email so orders don't mix; example.com never reaches a real person.
 export function buildCustomer(overrides: Partial<Customer> = {}): Customer {
   const id = randomUUID().slice(0, 8);
   return {
@@ -31,11 +27,7 @@ export function buildCustomer(overrides: Partial<Customer> = {}): Customer {
   };
 }
 
-/**
- * Card data for the shop's built-in "Manual" credit-card method. The shop only
- * validates the format locally; nothing is sent to a payment provider.
- * 4111 1111 1111 1111 is the industry-wide Visa test number, not a real card.
- */
+// Card data for the shop's "Manual" card method (no payment provider). 4111 1111 1111 1111 is the Visa test number.
 export interface TestCard {
   holder: string;
   number: string;

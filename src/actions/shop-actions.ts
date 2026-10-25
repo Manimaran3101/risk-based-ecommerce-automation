@@ -12,12 +12,8 @@ export interface PlacedOrder {
   confirmedTotal: number;
 }
 
-/**
- * Domain actions: what a shopper does, in the shop's own words. Tests read as
- * "select a product, check out as a guest, pay on delivery" and do not repeat
- * the 15 clicks behind each phrase. Page objects hold the locators; this class
- * holds the order of steps.
- */
+// Shopper actions: select product, check out as guest, pay, place order.
+// Page objects have the locators, this class has the order of the steps.
 export class ShopActions {
   readonly cart: CartPage;
   readonly checkout: CheckoutPage;
@@ -27,13 +23,13 @@ export class ShopActions {
     this.checkout = new CheckoutPage(page);
   }
 
-  /** Product selection through the real UI. Returns the price the shopper saw. */
+  /** Selects the product in the UI. Returns the price shown on the page. */
   async selectProduct(product: Product, quantity = 1): Promise<number> {
     await this.page.goto(`/${product.slug}`);
     await expect(this.page.getByRole('heading', { level: 1, name: product.name })).toBeVisible();
     const shownPrice = parseMoney(await this.page.locator(`.price-value-${product.id}`).innerText());
 
-    // Scoped: the page also lists "customers who bought this" boxes with their own buttons.
+    // Only inside .product-essential: the "customers also bought" boxes have Add to cart buttons too.
     const details = this.page.locator('.product-essential');
     await details.getByLabel('Qty:').fill(String(quantity));
     await details.getByRole('button', { name: 'Add to cart' }).click();
@@ -47,7 +43,7 @@ export class ShopActions {
     return (await this.cart.couponMessage.innerText()).trim();
   }
 
-  /** From a filled cart to the payment-method step, shipping to the billing address. */
+  /** From the cart to the payment method step. Ships to the billing address. */
   async checkoutAsGuest(customer: Customer): Promise<void> {
     await this.cart.open();
     await this.cart.acceptTermsOfService();
@@ -60,7 +56,7 @@ export class ShopActions {
     await this.checkout.continueFrom('shipping-method', 'payment-method');
   }
 
-  /** Chooses the payment method and fills its details; ends on the confirm step when valid. */
+  /** Chooses the payment method and fills the details. If valid, ends on the confirm step. */
   async pay(payment: Payment): Promise<void> {
     await this.checkout.choosePaymentMethod(payment.method);
     await this.checkout.continueFrom('payment-method', 'payment-info');

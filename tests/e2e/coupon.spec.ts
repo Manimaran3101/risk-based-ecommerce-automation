@@ -1,13 +1,8 @@
 import { products } from '../../src/data/products';
 import { expect, test } from '../../src/fixtures';
 
-/**
- * Discount rules. Only the rejection path can be exercised honestly here: the
- * public demo has no published valid coupon and we have no admin access to
- * create one. The maths of a *valid* discount (percentages, caps, expiry,
- * one-per-customer) belongs in unit/API tests of the discount service anyway;
- * see README > "Which checks belong at API or component level".
- */
+// Only the invalid coupon case: the demo has no valid coupon and I have no admin access.
+// Valid discount maths is better tested at API/unit level (see README).
 test.describe('Discount codes', () => {
   test('an invalid coupon is rejected and the total is unchanged', { tag: ['@regression'] }, async ({
     storefront,
